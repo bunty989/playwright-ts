@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "coord": {
+      "type": "object",
+      "properties": {
+        "lon": {
+          "type": "number"
+        },
+        "lat": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "weather": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "main": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "additionalItems": false
+    },
+    "base": {
+      "type": "string"
+    },
+    "main": {
+      "type": "object",
+      "properties": {
+        "temp": {
+          "type": "number"
+        },
+        "feels_like": {
+          "type": "number"
+        },
+        "temp_min": {
+          "type": "number"
+        },
+        "temp_max": {
+          "type": "number"
+        },
+        "pressure": {
+          "type": "integer"
+        },
+        "humidity": {
+          "type": "integer"
+        },
+        "sea_level": {
+          "type": "integer"
+        },
+        "grnd_level": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "visibility": {
+      "type": "integer"
+    },
+    "wind": {
+      "type": "object",
+      "properties": {
+        "speed": {
+          "type": "number"
+        },
+        "deg": {
+          "type": "integer"
+        },
+        "gust": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "clouds": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dt": {
+      "type": "integer"
+    },
+    "sys": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "country": {
+          "type": "string"
+        },
+        "sunrise": {
+          "type": "integer"
+        },
+        "sunset": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "timezone": {
+      "type": "integer"
+    },
+    "id": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "cod": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": true
+}

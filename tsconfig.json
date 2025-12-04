@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": [
+      "node",
+      "@cucumber/cucumber"
+    ],
+    "outDir": "dist",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "inlineSources": true
+  },
+  "include": [
+    "test/step-definitions/**/*.ts",
+    "framework/support/**/*.ts",
+    "framework/driverHelpers/**/*.ts",
+    "framework/hooks/**/*.ts",
+    "framework/playwrightHelpers/**/*.ts",
+    "test/pages/**/*.ts",
+    "framework/cucumber.js",
+      ".env"
+  ]
+}
