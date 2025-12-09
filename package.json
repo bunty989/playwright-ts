@@ -24,7 +24,7 @@
     "jsonpath-plus": "^10.3.0",
     "playwright": "^1.57.0",
     "rimraf": "^6.1.2",
-    "systeminformation": "^5.27.11",
+    "systeminformation": "^5.27.12",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
