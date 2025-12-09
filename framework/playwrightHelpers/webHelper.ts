@@ -51,7 +51,8 @@ export class WebHelper {
   public async PerformWebELementAction(
     locator: Locator,
     action: WebElementAction,
-    value?: string
+    value?: string,
+    loggingEnabled?: boolean
   ): Promise<void> {
      Log.info('Performing web element action', { action, value });
     try {
@@ -71,7 +72,9 @@ export class WebHelper {
       default:
         throw new Error(`Unsupported WebElementAction: ${action}`);
     }
+    if (loggingEnabled) {
      Log.debug('Web element action completed', { action, value });
+    }
   } catch (err) {
       Log.error('Error performing web element action', {
         action,

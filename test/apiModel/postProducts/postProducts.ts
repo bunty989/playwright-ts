@@ -1,5 +1,4 @@
-// test/ApiModel/PostProducts/postProducts.ts
-import test, { APIResponse } from '@playwright/test';
+import  { APIResponse } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ApiHelper } from '../../../framework/playwrightHelpers/apiHelper';

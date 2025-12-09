@@ -11,7 +11,6 @@ import { getPrimaryDisplayResolution } from '../support/systemInfo';
 import { Log } from '../support/logger';
 import { parseBooleanEnv, parseStringEnv } from '../support/envUtils';
 import fs from 'fs';
-import fsp from 'fs/promises';
 import path from 'path';
 import * as os from 'os';
 
@@ -25,7 +24,13 @@ async function updateDotEnvKey(key: string, value: string) {
   const lines = text.split(/\r?\n/).filter(Boolean);
   const others = lines.filter(l => !l.startsWith(`${key}=`));
   others.push(`${key}=${value}`);
-  fs.writeFileSync(DOTENV_PATH, others.join(os.EOL), 'utf8');
+  try {
+    const fd = fs.openSync(DOTENV_PATH, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR, 0o600);
+    fs.writeFileSync(fd, others.join(os.EOL), 'utf8');
+  } catch (error) {
+    fs.writeFileSync(DOTENV_PATH, others.join(os.EOL), 'utf8');
+  }
+  
   process.env[key] = value;
 }
 

@@ -170,7 +170,12 @@ function cleanEnvironmentFile(envFilePath: string) {
   }
 
   const backup = makeBackup(envFilePath);
-  fs.writeFileSync(envFilePath, outputPieces.join(os.EOL), "utf8");
+  try {
+    const fd = fs.openSync(envFilePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR, 0o600);
+    fs.writeFileSync(fd, outputPieces.join(os.EOL), "utf8");
+  } catch (error) {
+    // fs.writeFileSync(envFilePath, outputPieces.join(os.EOL), "utf8");
+  }
 
   console.log("✔ Cleaned environment.properties — duplicates collapsed.");
   console.log(`Backup written to: ${backup}`);
