@@ -17,7 +17,7 @@ export class LandingPage {
 
     this.createNewAccountBtn = this.webHelper.IdentifyWebElement(
       LocatorType.CssSelector,
-      "[class='login ng-scope'] [translate='CREATE_NEW_ACCOUNT']"
+      "[class^='create-new-account']"
     );
 
     this.products = this.webHelper.IdentifyWebElement(

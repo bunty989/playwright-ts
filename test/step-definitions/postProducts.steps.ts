@@ -22,7 +22,7 @@ Given(
     // Default body.json location, or override via env
     const bodyFilePath =
       process.env.POST_PRODUCTS_BODY_PATH ||
-      path.resolve(process.cwd(), 'test', 'ApiModel', 'PostProducts', 'body.json');
+      path.resolve(process.cwd(), 'test', 'apiModel', 'postProducts', 'body.json');
 
     if (!fs.existsSync(bodyFilePath)) {
       throw new Error(`PostProducts body.json not found at: ${bodyFilePath}`);

@@ -8,7 +8,8 @@
     "test": "npm run clean:logs && npm run clean:allure && cucumber-js --config framework/cucumber.js",
     "test:ui": "npm run clean:logs && npm run clean:allure && cucumber-js --config framework/cucumber.js -p ui",
     "test:api": "npm run clean:logs && npm run clean:allure && cucumber-js --config framework/cucumber.js -p api",
-    "allure:generate": "allure generate allure-results --clean -o allure-report",
+    "clean-env": "ts-node ./framework/scripts/clean-env.ts",
+    "allure:generate": "npm run clean-env && allure generate allure-results --clean -o allure-report",
     "allure:open": "allure open allure-report",
     "test:report": "npm test && npm run allure:generate && npm run allure:open"
   },

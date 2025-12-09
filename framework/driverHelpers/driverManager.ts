@@ -21,8 +21,6 @@ export class DriverManager {
   static resolveBrowserFromEnv(): SupportedBrowser {
     const raw = parseStringEnv(process.env.BROWSER) ?? '';
     const lower = raw.toLowerCase();
-    // const browser = (process.env.BROWSER || 'chromium').toLowerCase();
-
     switch (lower) {
       case 'firefox':
         Log.debug('Resolved browser from env', { requested: raw, resolved: 'firefox' });

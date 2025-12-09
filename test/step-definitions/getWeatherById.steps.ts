@@ -3,7 +3,7 @@ import { Given, When, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import { CustomWorld } from '../../framework/support/world';
 import { ApiHelper } from '../../framework/playwrightHelpers/apiHelper';
-import { GetWeatherById } from '../ApiModel/GetWeatherById/getWeatherById';
+import { GetWeatherById } from '../apiModel/getWeatherById/getWeatherById';
 import { testConfig } from '../config/testConfig';
 
 type WorldWithWeather = CustomWorld & {

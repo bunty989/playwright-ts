@@ -15,5 +15,5 @@ Scenario: User logs in
 	Given the browser is launched
 	When the user navigates to the app
 	And the user clicks on the "User" button
-	And the user clicks on the "CreateNewUSer" button
+	And the user clicks on the "CreateNewUser" button
 	Then the user should be shown the new user creation page

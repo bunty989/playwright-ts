@@ -10,6 +10,54 @@ import { DriverManager } from '../driverHelpers/driverManager';
 import { getPrimaryDisplayResolution } from '../support/systemInfo';
 import { Log } from '../support/logger';
 import { parseBooleanEnv, parseStringEnv } from '../support/envUtils';
+import fs from 'fs';
+import fsp from 'fs/promises';
+import path from 'path';
+import * as os from 'os';
+
+const DOTENV_PATH = path.join(process.cwd(), '.env');
+let wroteBrowserVersion = false;
+
+async function updateDotEnvKey(key: string, value: string) {
+  const text = fs.existsSync(DOTENV_PATH)
+    ? fs.readFileSync(DOTENV_PATH, 'utf8')
+    : '';
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  const others = lines.filter(l => !l.startsWith(`${key}=`));
+  others.push(`${key}=${value}`);
+  fs.writeFileSync(DOTENV_PATH, others.join(os.EOL), 'utf8');
+  process.env[key] = value;
+}
+
+
+async function detectBrowserVersionFromWorld(world: any): Promise<string> {
+  try {
+    if (world?.browser && typeof world.browser.version === 'function') {
+      const ver = await world.browser.version();
+      if (ver) return String(ver);
+    }
+
+    if (world?.page) {
+      try {
+        const ua: string = await world.page.evaluate(() => navigator.userAgent);
+        if (ua) {
+          let m = ua.match(/(?:Chrome|Chromium|CriOS|Edg|OPR)\/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+)/);
+          if (m && m[1]) return m[1];
+          m = ua.match(/Firefox\/([0-9]+\.[0-9]+(?:\.[0-9]+)?)/);
+          if (m && m[1]) return m[1];
+          m = ua.match(/Version\/([0-9]+\.[0-9]+(?:\.[0-9]+)?).*Safari/);
+          if (m && m[1]) return m[1];
+          m = ua.match(/([0-9]+\.[0-9]+\.[0-9]+)/);
+          if (m && m[1]) return m[1];
+        }
+      } catch (e) {
+      }
+    }
+  } catch (err) {
+    Log.warn('Error while detecting browser version from world', { err: String(err) });
+  }
+  return 'unknown';
+}
 
 BeforeAll(function () {
   Log.info('========== Test Run Started ==========');
@@ -34,11 +82,11 @@ Before(async function (this: CustomWorld, scenario: any) {
   Log.info('Launching browser', { browserName });
   const rawHeadless = parseStringEnv(process.env.HEADLESS);
   const headless = parseBooleanEnv(rawHeadless, true);
-  Log.info('browser headless: ' + headless);
   const { width, height } = await getPrimaryDisplayResolution();
   Log.info('Detected display resolution', { width, height });
   const isChromiumFamily =
     browserName === 'chromium' || browserName === 'edge';
+  const isEdgeHeadless = browserName === 'edge' && headless;
   const launchOptions =
     isChromiumFamily
       ? {
@@ -52,7 +100,7 @@ Before(async function (this: CustomWorld, scenario: any) {
   await this.driverManager.openBrowser(browserName, launchOptions);
 
   const contextOptions =
-    isChromiumFamily
+    isChromiumFamily && !isEdgeHeadless
       ? { viewport: null }
       : { viewport: { width, height } };
 
@@ -63,6 +111,17 @@ Before(async function (this: CustomWorld, scenario: any) {
   this.context = this.driverManager.context;
   this.page = this.driverManager.page;
   Log.info('Browser and context set up successfully');
+
+  if (tags.includes('@ui') && !wroteBrowserVersion) {
+    try {
+      const browserVersion = await detectBrowserVersionFromWorld(this);
+      await updateDotEnvKey('BROWSER_VERSION', browserVersion);
+      Log.info('Detected and wrote BROWSER_VERSION to .env', { browserVersion });
+      wroteBrowserVersion = true;
+    } catch (err) {
+      Log.warn('Failed to detect/write BROWSER_VERSION', { err: String(err) });
+    }
+  }
 });
 
 BeforeStep(function (this: CustomWorld, { pickleStep }) {
