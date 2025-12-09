@@ -1,5 +1,5 @@
 // test/ApiModel/Getweather/getWeather.ts
-import test, { APIResponse } from '@playwright/test';
+import { APIResponse } from '@playwright/test';
 import { ApiHelper } from '../../../framework/playwrightHelpers/apiHelper';
 import * as fs from 'fs';
 import * as path from 'path';

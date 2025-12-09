@@ -1,5 +1,5 @@
 import { request, APIRequestContext, APIResponse } from '@playwright/test';
-import Ajv, { JSONSchemaType } from 'ajv';
+import Ajv from 'ajv';
 import { JSONPath } from 'jsonpath-plus';
 import { performance } from 'perf_hooks';
 import { Log } from '../support/logger';

@@ -91,7 +91,8 @@ export class CreateAccountPage {
     await this.webHelper.PerformWebELementAction(
       this.passwordField,
       WebElementAction.EnterText,
-      password
+      password,
+      false
     );
   }
 
@@ -99,7 +100,8 @@ export class CreateAccountPage {
     await this.webHelper.PerformWebELementAction(
       this.confirmPasswordField,
       WebElementAction.EnterText,
-      confirmPassword
+      confirmPassword,
+      false
     );
   }
 

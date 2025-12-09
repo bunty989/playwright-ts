@@ -24,6 +24,6 @@ jobs:
         uses: pozil/auto-assign-issue@v2.2.0
         with:
           assignees: ${{github.actor}}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
           numOfAssignee: 1
           allowSelfAssign: true

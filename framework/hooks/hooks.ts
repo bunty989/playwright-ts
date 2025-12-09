@@ -11,7 +11,6 @@ import { getPrimaryDisplayResolution } from '../support/systemInfo';
 import { Log } from '../support/logger';
 import { parseBooleanEnv, parseStringEnv } from '../support/envUtils';
 import fs from 'fs';
-import fsp from 'fs/promises';
 import path from 'path';
 import * as os from 'os';
 
