@@ -142,6 +142,22 @@ After(async function (this: CustomWorld, scenario: any) {
     return;
   }
 
+   try {
+    if (this.page) {
+      const video = this.page.video();
+      if (video) {
+        const videoPath = await video.path();
+
+        if (fs.existsSync(videoPath)) {
+          const videoBuffer = fs.readFileSync(videoPath);
+          await this.attach(videoBuffer, 'video/webm');
+        }
+      }
+    }
+  } catch (error) {
+    // Do not fail test if video attachment fails
+  } 
+
   await this.driverManager.closeContext();
   await this.driverManager.closeBrowser();
   Log.info('Browser and context closed successfully.');
@@ -205,5 +221,6 @@ AfterStep(
 
     const screenshotBuffer = await this.page.screenshot({ fullPage: true });
     await this.attach(screenshotBuffer, 'image/png');
+
   }
 );
