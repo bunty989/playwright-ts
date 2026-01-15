@@ -88,6 +88,10 @@ export class DriverManager {
     this.context = await this.browser.newContext({
       viewport: null,
       ...contextOptions,
+      recordVideo:{
+        dir: 'allure-results/videos',
+        size: { width: 1280, height: 720 }
+      }
     });
 
     this.page = await this.context.newPage();
