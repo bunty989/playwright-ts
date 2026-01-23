@@ -6,6 +6,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { getPrimaryDisplayResolution } from './systemInfo';
 import 'dotenv/config';
+import {
+  getHeadlessSetting,
+  resolveBrowserFromEnv,
+} from './playwrightRuntimeConfig';
 
 const ALLURE_DIR = path.join(process.cwd(), 'allure-results');
 const ALLURE_FILE = path.join(ALLURE_DIR, 'environment.properties');
@@ -39,7 +43,7 @@ async function readProperties(filePath: string): Promise<Record<string, string>>
     }
     return map;
   } catch (err: any) {
-    if (err?.code === 'ENOENT') return {}; 
+    if (err?.code === 'ENOENT') return {};
     throw err;
   }
 }
@@ -64,8 +68,8 @@ BeforeAll(async function () {
   const osVersion = `${os.type()} ${os.release()} (${os.platform()})`;
 
   const playwrightVersion = getPlaywrightVersion();
-  const browserName = (process.env.BROWSER || 'chromium').toLowerCase();
-  const headless = process.env.HEADLESS || 'true';
+  const browserName = resolveBrowserFromEnv();
+  const headless = String(getHeadlessSetting());
   const { width, height } = await getPrimaryDisplayResolution();
 
   const props = new Map<string, string>([

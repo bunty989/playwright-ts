@@ -1,3 +1,15 @@
+const fs = require('fs');
+const path = require('path');
+
+require('ts-node/register');
+
+const { frameworkRuntimeSettings } = require('./playwright.config.ts');
+
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
 const common = {
   requireModule: ['ts-node/register', 'dotenv/config'],
 
@@ -11,21 +23,20 @@ const common = {
 
   paths: ['test/features/**/*.feature'],
 
-  publishQuiet: false,
+  publishQuiet: true,
 
   format: [
-    'allure-cucumberjs/reporter'
-    // ['@cucumber/html-formatter', { output: 'reports/cucumber-report.html' }],
-    // 'progress',
-    // '@cucumber/pretty-formatter'
+    'allure-cucumberjs/reporter',
+    'html:logs/cucumber-report.html',
+    'json:logs/cucumber-report.json'
   ],
 
   formatOptions: {
     resultsDir: 'allure-results'
   },
 
-  retry: 3,
-  parallel: 10
+  retry: frameworkRuntimeSettings?.retries,
+  parallel: frameworkRuntimeSettings?.parallel
 };
 
 module.exports = {

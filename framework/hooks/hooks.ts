@@ -2,20 +2,50 @@ import {
   Before,
   After,
   AfterStep,
-  BeforeAll, BeforeStep,
-  Status
+  BeforeAll,
+  BeforeStep,
+  Status,
 } from '@cucumber/cucumber';
 import { CustomWorld } from '../support/world';
 import { DriverManager } from '../driverHelpers/driverManager';
 import { getPrimaryDisplayResolution } from '../support/systemInfo';
 import { Log } from '../support/logger';
-import { parseBooleanEnv, parseStringEnv } from '../support/envUtils';
 import fs from 'fs';
 import path from 'path';
 import * as os from 'os';
+import {
+  getContextOptions,
+  getHeadlessSetting,
+  getLaunchOptions,
+} from '../support/playwrightRuntimeConfig';
 
 const DOTENV_PATH = path.join(process.cwd(), '.env');
 let wroteBrowserVersion = false;
+
+type ScreenshotMode = 'success' | 'failure' | 'none' | 'all';
+
+function getScreenshotModeFromEnv(): ScreenshotMode {
+  const raw = (process.env.CUCUMBER_SCREENSHOT_MODE || 'failure').toLowerCase().trim();
+  if (raw === 'success' || raw === 'failure' || raw === 'none' || raw === 'all') {
+    return raw;
+  }
+  return 'failure';
+}
+
+function shouldAttachScenarioScreenshot(mode: ScreenshotMode, status: string | undefined): boolean {
+  if (mode === 'none' || !status) return false;
+  if (mode === 'all') return false;
+  if (mode === 'success') return status === Status.PASSED;
+  return status === Status.FAILED;
+}
+
+function shouldAttachStepScreenshot(mode: ScreenshotMode): boolean {
+  return mode === 'all';
+}
+
+function shouldAttachVideo(): boolean {
+  return (process.env.ATTACH_VIDEO_TO_REPORTS || 'false').toLowerCase().trim() === 'true';
+}
 
 async function updateDotEnvKey(key: string, value: string) {
   const text = fs.existsSync(DOTENV_PATH)
@@ -28,7 +58,6 @@ async function updateDotEnvKey(key: string, value: string) {
   process.env[key] = value;
 }
 
-
 async function detectBrowserVersionFromWorld(world: any): Promise<string> {
   try {
     if (world?.browser && typeof world.browser.version === 'function') {
@@ -40,7 +69,9 @@ async function detectBrowserVersionFromWorld(world: any): Promise<string> {
       try {
         const ua: string = await world.page.evaluate(() => navigator.userAgent);
         if (ua) {
-          let m = ua.match(/(?:Chrome|Chromium|CriOS|Edg|OPR)\/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+)/);
+          let m = ua.match(
+            /(?:Chrome|Chromium|CriOS|Edg|OPR)\/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+)/
+          );
           if (m && m[1]) return m[1];
           m = ua.match(/Firefox\/([0-9]+\.[0-9]+(?:\.[0-9]+)?)/);
           if (m && m[1]) return m[1];
@@ -49,7 +80,8 @@ async function detectBrowserVersionFromWorld(world: any): Promise<string> {
           m = ua.match(/([0-9]+\.[0-9]+\.[0-9]+)/);
           if (m && m[1]) return m[1];
         }
-      } catch (e) {
+      } catch {
+        // best-effort parsing
       }
     }
   } catch (err) {
@@ -67,7 +99,7 @@ Before(async function (this: CustomWorld, scenario: any) {
   const tags: string[] = (scenario?.pickle?.tags || []).map((t: any) => t.name as string);
   Log.info('Starting scenario', {
     name: scenarioName,
-    tags: tags
+    tags,
   });
   this.isApiTest = tags.includes('@api');
 
@@ -79,31 +111,17 @@ Before(async function (this: CustomWorld, scenario: any) {
   const browserName = DriverManager.resolveBrowserFromEnv();
   this.browserName = browserName;
   Log.info('Launching browser', { browserName });
-  const rawHeadless = parseStringEnv(process.env.HEADLESS);
-  const headless = parseBooleanEnv(rawHeadless, true);
+
+  const headless = getHeadlessSetting();
   const { width, height } = await getPrimaryDisplayResolution();
   Log.info('Detected display resolution', { width, height });
-  const isChromiumFamily =
-    browserName === 'chromium' || browserName === 'edge';
-  const isEdgeHeadless = browserName === 'edge' && headless;
-  const launchOptions =
-    isChromiumFamily
-      ? {
-          headless: headless,
-          args: ['--start-maximized'],
-        }
-      : {
-          headless: headless,
-        };
+
+  const launchOptions = getLaunchOptions(browserName);
   Log.debug('Browser launch options', launchOptions);
   await this.driverManager.openBrowser(browserName, launchOptions);
 
-  const contextOptions =
-    isChromiumFamily && !isEdgeHeadless
-      ? { viewport: null }
-      : { viewport: { width, height } };
-
-  Log.debug('Creating browser context', contextOptions);
+  const contextOptions = getContextOptions(browserName, width, height);
+  Log.debug('Creating browser context', { ...contextOptions, headless });
   await this.driverManager.newContext(contextOptions);
 
   this.browser = this.driverManager.browser;
@@ -125,7 +143,7 @@ Before(async function (this: CustomWorld, scenario: any) {
 
 BeforeStep(function (this: CustomWorld, { pickleStep }) {
   Log.debug('Starting step', {
-    step: pickleStep?.text
+    step: pickleStep?.text,
   });
 });
 
@@ -135,15 +153,27 @@ After(async function (this: CustomWorld, scenario: any) {
 
   Log.info('Finished scenario', {
     name: scenarioName,
-    status
+    status,
   });
   if (this.isApiTest) {
     Log.info('API scenario — no browser cleanup required.');
     return;
   }
 
-   try {
-    if (this.page) {
+  try {
+    if (this.page && shouldAttachScenarioScreenshot(getScreenshotModeFromEnv(), status)) {
+      const screenshotBuffer = await this.page.screenshot({
+        type: 'jpeg',
+        quality: 55,
+      });
+      await this.attach(screenshotBuffer, 'image/jpeg');
+    }
+  } catch {
+    // Do not fail test if screenshot attachment fails
+  }
+
+  try {
+    if (shouldAttachVideo() && this.page) {
       const video = this.page.video();
       if (video) {
         const videoPath = await video.path();
@@ -154,9 +184,9 @@ After(async function (this: CustomWorld, scenario: any) {
         }
       }
     }
-  } catch (error) {
+  } catch {
     // Do not fail test if video attachment fails
-  } 
+  }
 
   await this.driverManager.closeContext();
   await this.driverManager.closeBrowser();
@@ -166,61 +196,57 @@ After(async function (this: CustomWorld, scenario: any) {
   this.browser = undefined;
 });
 
-AfterStep(
-  async function (this: CustomWorld, { pickleStep, result }: any) {
-    const stepText = pickleStep?.text;
-    Log.debug('Finished step', {
-      step: stepText,
-      status: result?.status
-    });
-    if (this.isApiTest) {
-      if (
-        pickleStep?.text === 'I should get a response for the api call'
-      ) {
-        if (this.apiResponseBody) {
-          const trimmed = this.apiResponseBody.trim();
-          const looksJson =
-            trimmed.startsWith('{') || trimmed.startsWith('[');
+AfterStep(async function (this: CustomWorld, { pickleStep, result }: any) {
+  const stepText = pickleStep?.text;
+  Log.debug('Finished step', {
+    step: stepText,
+    status: result?.status,
+  });
+  if (this.isApiTest) {
+    if (pickleStep?.text === 'I should get a response for the api call') {
+      if (this.apiResponseBody) {
+        const trimmed = this.apiResponseBody.trim();
+        const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[');
 
-          await this.attach(
-            this.apiResponseBody,
-            looksJson ? 'application/json' : 'text/plain'
-          );
-        }
-
-        if (this.fullRequestUrl) {
-          await this.attach(
-            `Request URL:\n${this.fullRequestUrl}`,
-            'text/plain'
-          );
-        }
-
-        if (this.requestQueryParams) {
-          await this.attach(
-            JSON.stringify(this.requestQueryParams, null, 2),
-            'application/json'
-          );
-        }
-
-        if (this.responseTimeMs !== undefined) {
-          await this.attach(
-            `Response Time: ${this.responseTimeMs} ms`,
-            'text/plain'
-          );
-        }
+        await this.attach(
+          this.apiResponseBody,
+          looksJson ? 'application/json' : 'text/plain'
+        );
       }
 
-      return;
+      if (this.fullRequestUrl) {
+        await this.attach(`Request URL:\n${this.fullRequestUrl}`, 'text/plain');
+      }
+
+      if (this.requestQueryParams) {
+        await this.attach(
+          JSON.stringify(this.requestQueryParams, null, 2),
+          'application/json'
+        );
+      }
+
+      if (this.responseTimeMs !== undefined) {
+        await this.attach(`Response Time: ${this.responseTimeMs} ms`, 'text/plain');
+      }
     }
 
-    if (!this.page) return;
-
-    if (result?.status !== Status.PASSED && result?.status !== Status.FAILED) {
-      return;
-    }
-
-    const screenshotBuffer = await this.page.screenshot({ fullPage: true });
-    await this.attach(screenshotBuffer, 'image/png');
-
+    return;
   }
-);
+
+  const screenshotMode = getScreenshotModeFromEnv();
+  if (!shouldAttachStepScreenshot(screenshotMode) || !this.page) {
+    return;
+  }
+
+  try {
+    const screenshotBuffer = await this.page.screenshot({
+      type: 'jpeg',
+      quality: 40,
+    });
+    await this.attach(screenshotBuffer, 'image/jpeg');
+  } catch {
+    // Do not fail test if screenshot attachment fails
+  }
+});
+
+

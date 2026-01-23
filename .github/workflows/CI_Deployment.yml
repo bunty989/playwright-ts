@@ -23,6 +23,10 @@ jobs:
       HEADLESS: 'true'
       DEFAULT_TIMEOUT: '60'
       LOG_LEVEL: 'debug'
+      CUCUMBER_SCREENSHOT_MODE: 'all'
+      ATTACH_VIDEO_TO_REPORTS: 'true'
+      RETRY: '3'
+      PARALLEL: '10'
       TZ: 'Australia/Sydney'
 
     steps:
@@ -54,6 +58,10 @@ jobs:
           echo "HEADLESS=${HEADLESS}" >> .env
           echo "DEFAULT_TIMEOUT=${DEFAULT_TIMEOUT}" >> .env
           echo "LOG_LEVEL=${LOG_LEVEL}" >> .env
+          echo "CUCUMBER_SCREENSHOT_MODE=${CUCUMBER_SCREENSHOT_MODE}" >> .env
+          echo "ATTACH_VIDEO_TO_REPORTS=${ATTACH_VIDEO_TO_REPORTS}" >> .env
+          echo "RETRY=${RETRY}" >> .env
+          echo "PARALLEL=${PARALLEL}" >> .env
         shell: bash
 
       - name: Run tests
