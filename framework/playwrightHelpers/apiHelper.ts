@@ -3,6 +3,7 @@ import Ajv from 'ajv';
 import { JSONPath } from 'jsonpath-plus';
 import { performance } from 'perf_hooks';
 import { Log } from '../support/logger';
+import { serializeJson, deserializeJson } from '../support/commonMethods';
 
 export class ApiHelper {
   private requestContext!: APIRequestContext;
@@ -174,11 +175,11 @@ private async requestWithMeta(
 }
 
   serializeJson(obj: unknown): string {
-    return JSON.stringify(obj, null, 2);
+    return serializeJson(obj);
   }
 
   deserializeJson<T>(json: string): T {
-    return JSON.parse(json) as T;
+    return deserializeJson<T>(json);
   }
 
   validateResponseSchema(
