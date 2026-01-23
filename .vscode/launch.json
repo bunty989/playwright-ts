@@ -1,0 +1,72 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // 1) Debug ALL UI tests (@ui profile)
+      "type": "node",
+      "request": "launch",
+      "name": "Debug UI tests",
+      "program": "${workspaceFolder}/node_modules/@cucumber/cucumber/bin/cucumber-js",
+      "args": [
+        "--config",
+        "framework/cucumber.js",
+        "-p",
+        "ui"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // 2) Debug ALL API tests (@api profile)
+      "type": "node",
+      "request": "launch",
+      "name": "Debug API tests",
+      "program": "${workspaceFolder}/node_modules/@cucumber/cucumber/bin/cucumber-js",
+      "args": [
+        "--config",
+        "framework/cucumber.js",
+        "-p",
+        "api"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // 3) Debug a SINGLE feature file (edit path as needed)
+      "type": "node",
+      "request": "launch",
+      "name": "Debug single feature file",
+      "program": "${workspaceFolder}/node_modules/@cucumber/cucumber/bin/cucumber-js",
+      "args": [
+        "--config",
+        "framework/cucumber.js",
+        "test/features/AdvantageDemo.feature"   // 👈 adjust path if different
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // 4) Debug a scenario by name (regex match on scenario name)
+      "type": "node",
+      "request": "launch",
+      "name": "Debug scenario by name",
+      "program": "${workspaceFolder}/node_modules/@cucumber/cucumber/bin/cucumber-js",
+      "args": [
+        "--config",
+        "framework/cucumber.js",
+        "--name",
+        "GetWeatherById without the api key"    // 👈 scenario name from .feature
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    }
+  ]
+}
