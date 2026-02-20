@@ -255,3 +255,217 @@ function tokenize(path: string): (string | number)[] {
 
     return tokens;
 }
+
+
+
+// generateOTC.steps.ts
+
+import { Given } from '@cucumber/cucumber'
+
+// Adjust imports to your project structure
+import { postGenerateOTC } from '../api/postGenerateOTC'
+import { OTCTestConstants } from '../constants/OTCTestConstants'
+
+/* =========================================================
+   Types
+   ========================================================= */
+
+type UpdateCommand = {
+  key: string
+  value: string
+}
+
+/* =========================================================
+   Step Definition
+   ========================================================= */
+
+Given(
+  'I have the valid request header and invalid body with {string} for {string} otc type to be sent to {string}',
+  async function (
+    nodeValueToUpdate: string,
+    otcType: string,
+    deliveryMethod: string
+  ) {
+    await postGenerateOTC.setupRequestAsync()
+
+    const bodyPath =
+      deliveryMethod.toLowerCase() === 'email'
+        ? OTCTestConstants.PathVariables.GenerateOTCBodyEmail
+        : OTCTestConstants.PathVariables.GenerateOTCBodyMobile
+
+    const command = parse(nodeValueToUpdate)
+
+    applyUpdate(command, bodyPath, otcType)
+  }
+)
+
+/* =========================================================
+   Parser
+   ========================================================= */
+
+function parse(input: string): UpdateCommand {
+  const [rawKey, rawValue = ''] = input.split(':', 2)
+
+  return {
+    key: rawKey.trim().toLowerCase(),
+    value: rawValue.trim()
+  }
+}
+
+/* =========================================================
+   Dispatcher
+   ========================================================= */
+
+function applyUpdate(
+  cmd: UpdateCommand,
+  bodyPath: string,
+  otcType: string
+): void {
+
+  const handlers: Record<string, () => void> = {
+
+    mobile: () => updateMobile(cmd.value, bodyPath, otcType),
+
+    email: () => updateEmail(cmd.value, bodyPath, otcType),
+
+    delivery: () => updateDelivery(cmd.value, bodyPath, otcType),
+
+    otctype: () => updateOtcType(cmd.value, bodyPath),
+
+    time: () => updateTime(cmd.value, bodyPath, otcType),
+
+    retries: () => updateRetries(cmd.value, bodyPath, otcType),
+
+    body: () => invalidateBody(),
+
+    partyid: () => updatePartyId(cmd.value, bodyPath, otcType)
+  }
+
+  const handler = handlers[cmd.key]
+
+  if (!handler) {
+    throw new Error(`Unsupported update key: ${cmd.key}`)
+  }
+
+  handler()
+}
+
+/* =========================================================
+   Handlers
+   ========================================================= */
+
+function updateMobile(
+  value: string,
+  bodyPath: string,
+  otcType: string
+) {
+  setValidBody(bodyPath, otcType)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].correspondence_details.mobile_number',
+    value
+  )
+}
+
+function updateEmail(
+  value: string,
+  bodyPath: string,
+  otcType: string
+) {
+  setValidBody(bodyPath, otcType)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].correspondence_details.email_address',
+    value
+  )
+}
+
+function updateDelivery(
+  value: string,
+  bodyPath: string,
+  otcType: string
+) {
+  setValidBody(bodyPath, otcType)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].delivery_method',
+    value
+  )
+}
+
+function updateOtcType(
+  value: string,
+  bodyPath: string
+) {
+  postGenerateOTC.setValidRequestBody(bodyPath)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].type_of_code',
+    value
+  )
+}
+
+function updateTime(
+  value: string,
+  bodyPath: string,
+  otcType: string
+) {
+  setValidBody(bodyPath, otcType)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].time_to_live',
+    Number(value)
+  )
+}
+
+function updateRetries(
+  value: string,
+  bodyPath: string,
+  otcType: string
+) {
+  setValidBody(bodyPath, otcType)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].retries',
+    Number(value)
+  )
+}
+
+function invalidateBody() {
+  postGenerateOTC.setInvalidRequestBody(null, null, null)
+}
+
+function updatePartyId(
+  value: string,
+  bodyPath: string,
+  otcType: string
+) {
+  const finalValue =
+    value.toLowerCase() === 'null'
+      ? null
+      : ''
+
+  postGenerateOTC.setInvalidRequestBody(
+    bodyPath,
+    'data[0].party_id',
+    finalValue
+  )
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].type_of_code',
+    otcType
+  )
+}
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+
+function setValidBody(bodyPath: string, otcType: string) {
+  postGenerateOTC.setValidRequestBody(bodyPath)
+
+  postGenerateOTC.updateRequestBody(
+    'data[0].type_of_code',
+    otcType
+  )
+}
