@@ -255,3 +255,286 @@ function tokenize(path: string): (string | number)[] {
 
     return tokens;
 }
+
+
+
+
+
+
+import { APIResponse } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+import { ApiHelper } from '../../../framework/support/apiHelper';
+
+import {
+  deserializeJson,
+  modifyJson
+} from '../../../framework/common/commonMethods';
+
+export class PostGenerateOTC {
+  private readonly apiHelper: ApiHelper;
+
+  /** Immutable request body per instance */
+  private requestBody: unknown = null;
+
+  private response?: APIResponse;
+
+  constructor(apiHelper?: ApiHelper) {
+    this.apiHelper = apiHelper ?? new ApiHelper();
+  }
+
+  // ---------------------------------------------------------
+  // Setup request client (per scenario)
+  // ---------------------------------------------------------
+  async setupRequestAsync(): Promise<void> {
+    const baseUrl =
+      process.env.OTC_BASE_URL ||
+      process.env.API_BASE_URL ||
+      '';
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: '*/*'
+    };
+
+    await this.apiHelper.setupApiRequestClient(baseUrl, headers);
+  }
+
+  // ---------------------------------------------------------
+  // Load VALID request body (parallel-safe)
+  // ---------------------------------------------------------
+  setValidRequestBody(jsonPath: string): void {
+    const raw = fs.readFileSync(path.resolve(jsonPath), 'utf8');
+
+    // Deserialize into NEW object
+    const base = deserializeJson<any>(raw);
+
+    const randomId = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    this.requestBody = modifyJson(base, {
+      path: 'data[0].party_id',
+      operation: 'update',
+      value: randomId
+    });
+  }
+
+  // ---------------------------------------------------------
+  // Load INVALID request body
+  // ---------------------------------------------------------
+  setInvalidRequestBody(
+    jsonPath: string | null,
+    nodeName?: string,
+    nodeValue?: any
+  ): void {
+    if (!jsonPath) {
+      this.requestBody = null;
+      return;
+    }
+
+    const raw = fs.readFileSync(path.resolve(jsonPath), 'utf8');
+
+    const base = deserializeJson<any>(raw);
+
+    this.requestBody =
+      nodeName !== undefined
+        ? modifyJson(base, {
+            path: nodeName,
+            operation: 'update',
+            value: nodeValue
+          })
+        : base;
+  }
+
+  // ---------------------------------------------------------
+  // Update JSON safely (immutable)
+  // ---------------------------------------------------------
+  updateRequestBody(pathStr: string, newValue: any): void {
+    if (!this.requestBody)
+      throw new Error('Request body not initialized');
+
+    this.requestBody = modifyJson(this.requestBody, {
+      path: pathStr,
+      operation: 'update',
+      value: newValue
+    });
+  }
+
+  // ---------------------------------------------------------
+  // Remove node safely
+  // ---------------------------------------------------------
+  addRemoveBodyNodes(pathStr: string): void {
+    if (!this.requestBody)
+      throw new Error('Request body not initialized');
+
+    this.requestBody = modifyJson(this.requestBody, {
+      path: pathStr,
+      operation: 'delete'
+    });
+  }
+
+  // ---------------------------------------------------------
+  // POST request
+  // ---------------------------------------------------------
+  async postGenerateOTCAsync(endpoint: string): Promise<APIResponse> {
+    if (!this.requestBody)
+      throw new Error('Request body not initialized');
+
+    this.response = await this.apiHelper.postAsync(
+      endpoint,
+      this.requestBody
+    );
+
+    return this.response;
+  }
+
+  // ---------------------------------------------------------
+  // Schema validation
+  // ---------------------------------------------------------
+  validateResponseSchema(
+    responseBody: string,
+    schemaPath: string
+  ): boolean {
+    const schemaContent = fs.readFileSync(
+      path.resolve(schemaPath),
+      'utf8'
+    );
+
+    return this.apiHelper.validateResponseSchema(
+      responseBody,
+      schemaContent
+    );
+  }
+}
+
+
+
+import { Given, When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+
+import { CustomWorld } from '../../framework/support/world';
+import { ApiHelper } from '../../framework/playwrightHelpers/apiHelper';
+import { PostGenerateOTC } from '../ApiModel/GenerateOTC/postGenerateOTC';
+
+type WorldWithOTC = CustomWorld & {
+  otcClient?: PostGenerateOTC;
+};
+
+
+// ============================================================
+// VALID BODY
+// ============================================================
+
+Given(
+  'I have the valid request header and body for {string} otc type to be sent to {string}',
+  async function (
+    this: WorldWithOTC,
+    otcType: string,
+    deliveryMethod: string
+  ) {
+    this.isApiTest = true;
+
+    const apiHelper = new ApiHelper();
+    this.apiHelper = apiHelper;
+
+    const client = new PostGenerateOTC(apiHelper);
+    await client.setupRequestAsync();
+
+    const bodyPath =
+      deliveryMethod.toLowerCase() === 'email'
+        ? 'test/data/BodyEmail.json'
+        : 'test/data/BodyMobile.json';
+
+    client.setValidRequestBody(bodyPath);
+    client.updateRequestBody('data[0].type_of_code', otcType);
+
+    this.otcClient = client;
+  }
+);
+
+
+// ============================================================
+// INVALID BODY (missing node)
+// ============================================================
+
+Given(
+  'I have the valid request header and invalid body with missing {string} for {string} otc type to be sent to {string}',
+  async function (
+    this: WorldWithOTC,
+    missingNode: string,
+    otcType: string,
+    deliveryMethod: string
+  ) {
+    this.isApiTest = true;
+
+    if (!this.otcClient) {
+      const apiHelper = new ApiHelper();
+      this.apiHelper = apiHelper;
+
+      const client = new PostGenerateOTC(apiHelper);
+      await client.setupRequestAsync();
+
+      const bodyPath =
+        deliveryMethod.toLowerCase() === 'email'
+          ? 'test/data/BodyEmail.json'
+          : 'test/data/BodyMobile.json';
+
+      client.setValidRequestBody(bodyPath);
+
+      this.otcClient = client;
+    }
+
+    this.otcClient.addRemoveBodyNodes(`data[0].${missingNode}`);
+    this.otcClient.updateRequestBody('data[0].type_of_code', otcType);
+  }
+);
+
+
+// ============================================================
+// SEND REQUEST
+// ============================================================
+
+When(
+  'I send a POST request to the Generate OTC endpoint',
+  async function (this: WorldWithOTC) {
+    if (!this.otcClient) throw new Error('OTC client not initialized');
+
+    this.apiEndpoint = '/generate-otc'; // adjust if needed
+
+    this.apiResponse = await this.otcClient.postGenerateOTCAsync(
+      this.apiEndpoint
+    );
+
+    const helper = this.apiHelper ?? new ApiHelper();
+
+    const body = await helper.getResponseBodyAsJson(this.apiResponse);
+
+    this.apiResponseBody =
+      typeof body === 'string' ? body : helper.serializeJson(body);
+  }
+);
+
+
+// ============================================================
+// SCHEMA VALIDATION
+// ============================================================
+
+Then(
+  'the response should pass the schema for {string} of Generate OTC endpoint',
+  function (this: WorldWithOTC, schemaName: string) {
+    if (!this.apiResponseBody || !this.otcClient) {
+      throw new Error('No response available for schema validation');
+    }
+
+    const schemaPath =
+      `test/ApiModel/GenerateOTC/schemas/${schemaName}.json`;
+
+    const isValid = this.otcClient.validateResponseSchema(
+      this.apiResponseBody,
+      schemaPath
+    );
+
+    expect(isValid).toBe(true);
+  }
+);
