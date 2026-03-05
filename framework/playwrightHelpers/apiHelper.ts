@@ -3,6 +3,8 @@ import Ajv from 'ajv';
 import { JSONPath } from 'jsonpath-plus';
 import { performance } from 'perf_hooks';
 import { Log } from '../support/logger';
+import { serializeJson, deserializeJson } from '../support/commonMethods';
+import { frameworkRuntimeSettings } from '../playwright.config';
 
 export class ApiHelper {
   private requestContext!: APIRequestContext;
@@ -21,18 +23,17 @@ export class ApiHelper {
     headers: Record<string, string>,
     timeoutMs?: number
   ): Promise<void> {
-    const timeoutFromEnv =
-      Number(process.env.API_TIMEOUT_SECONDS || '30') * 1000;
+    const timeoutFromConfig = frameworkRuntimeSettings.apiTimeoutMs;
     Log.debug('API Request Client setup', {
       baseUrl,
-      timeoutFromEnv,
+      timeoutFromConfig,
       headers
     });
     this.baseUrl = baseUrl;
     this.requestContext = await request.newContext({
       baseURL: baseUrl,
       extraHTTPHeaders: headers,
-      timeout: timeoutMs ?? timeoutFromEnv,
+      timeout: timeoutMs ?? timeoutFromConfig,
       ignoreHTTPSErrors: true
     });
   }
@@ -131,7 +132,7 @@ private async requestWithMeta(
   params?: Record<string, string | number | boolean>
 ): Promise<APIResponse> {
   return this.requestWithMeta('POST', endpoint, {
-    data: body,
+    ...(body != null && { data: body }),
     params
   });
 }
@@ -174,11 +175,11 @@ private async requestWithMeta(
 }
 
   serializeJson(obj: unknown): string {
-    return JSON.stringify(obj, null, 2);
+    return serializeJson(obj);
   }
 
   deserializeJson<T>(json: string): T {
-    return JSON.parse(json) as T;
+    return deserializeJson<T>(json);
   }
 
   validateResponseSchema(

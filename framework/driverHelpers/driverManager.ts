@@ -9,9 +9,12 @@ import {
   BrowserContextOptions,
 } from '@playwright/test';
 import { Log } from '../support/logger';
-import { parseStringEnv } from '../support/envUtils';
+import {
+  resolveBrowserFromEnv,
+  SupportedBrowser,
+} from '../support/playwrightRuntimeConfig';
 
-export type SupportedBrowser = 'chromium' | 'firefox' | 'webkit' | 'edge';
+export { SupportedBrowser } from '../support/playwrightRuntimeConfig';
 
 export class DriverManager {
   browser?: Browser;
@@ -19,79 +22,50 @@ export class DriverManager {
   page?: Page;
 
   static resolveBrowserFromEnv(): SupportedBrowser {
-    const raw = parseStringEnv(process.env.BROWSER) ?? '';
-    const lower = raw.toLowerCase();
-    switch (lower) {
-      case 'firefox':
-        Log.debug('Resolved browser from env', { requested: raw, resolved: 'firefox' });
-        return 'firefox';
-      case 'webkit':
-      case 'safari':
-        Log.debug('Resolved browser from env', { requested: raw, resolved: 'webkit' });
-        return 'webkit';
-      case 'edge':
-        Log.debug('Resolved browser from env', { requested: raw, resolved: 'edge' });
-        return 'edge';
-      case 'chromium':
-      case 'chrome':
-        Log.debug('Resolved browser from env', { requested: raw, resolved: 'chromium' });
-        return 'chromium';
-      default:
-        console.warn(
-          `Unknown BROWSER="${raw}", defaulting to chromium. Use chromium|firefox|webkit|edge.`
-        );
-        Log.debug(`Unknown BROWSER="${raw}", defaulting to chromium. Use chromium|firefox|webkit|edge.`);
-        return 'chromium';
-    }
+    const resolved = resolveBrowserFromEnv();
+    Log.debug('Resolved browser from runtime config/env', { resolved });
+    return resolved;
   }
 
   async openBrowser(
-  browserName: SupportedBrowser,
-  launchOptions: LaunchOptions = {}
-): Promise<void> {
-  if (browserName === 'firefox') {
-    this.browser = await firefox.launch({
-      ...launchOptions,
-    });
-    return;
-  }
-
-  if (browserName === 'webkit') {
-    this.browser = await webkit.launch({
-      ...launchOptions,
-    });
-    return;
-  }
-
-  if (browserName === 'edge') {
-    this.browser = await chromium.launch({
-      channel: 'msedge',
-      ...launchOptions,
-    });
-    return;
-  }
-
-  this.browser = await chromium.launch({
-    ...launchOptions,
-  });
-}
-
-
-  async newContext(
-    contextOptions: BrowserContextOptions = {}
+    browserName: SupportedBrowser,
+    launchOptions: LaunchOptions = {}
   ): Promise<void> {
+    if (browserName === 'firefox') {
+      this.browser = await firefox.launch({
+        ...launchOptions,
+      });
+      return;
+    }
+
+    if (browserName === 'webkit') {
+      this.browser = await webkit.launch({
+        ...launchOptions,
+      });
+      return;
+    }
+
+    if (browserName === 'edge') {
+      this.browser = await chromium.launch({
+        channel: launchOptions.channel ?? 'msedge',
+        ...launchOptions,
+      });
+      return;
+    }
+
+    this.browser = await chromium.launch({
+      ...launchOptions,
+    });
+  }
+
+  async newContext(contextOptions: BrowserContextOptions = {}): Promise<void> {
     if (!this.browser) {
       Log.error('Browser is not opened. Call openBrowser() first.');
       throw new Error('Browser is not opened. Call openBrowser() first.');
     }
 
     this.context = await this.browser.newContext({
-      viewport: null,
       ...contextOptions,
-      recordVideo:{
-        dir: 'allure-results/videos',
-        size: { width: 1280, height: 720 }
-      }
     });
 
     this.page = await this.context.newPage();
