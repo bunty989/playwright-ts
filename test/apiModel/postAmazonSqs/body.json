@@ -1,0 +1,4 @@
+{
+  "QueueUrl": "https://sqs.ap-southeast-2.amazonaws.com/123456789012/demo-queue",
+  "MessageBody": "Hello from Playwright Cucumber"
+}

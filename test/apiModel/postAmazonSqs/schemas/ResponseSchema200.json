@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "MessageId",
+    "MD5OfMessageBody"
+  ],
+  "properties": {
+    "MessageId": {
+      "type": "string"
+    },
+    "MD5OfMessageBody": {
+      "type": "string"
+    },
+    "SequenceNumber": {
+      "type": "string"
+    }
+  }
+}
