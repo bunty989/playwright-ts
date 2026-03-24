@@ -1,0 +1,6 @@
+{
+  "query": "query GetCountry($code: ID!) { country(code: $code) { code name capital currency continent { name } } }",
+  "variables": {
+    "code": "AU"
+  }
+}
