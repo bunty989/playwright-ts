@@ -11,6 +11,34 @@ export type AwsSignatureConfig = {
   serviceName: string;
 };
 
+export function normalizeAwsServiceName(serviceName: string): string {
+  const normalized = serviceName.trim().toLowerCase();
+
+  if (normalized === 'amazonsqs') {
+    return 'sqs';
+  }
+
+  return normalized;
+}
+
+export function extractAwsScopeFromHost(
+  host: string
+): Partial<AwsSignatureConfig> {
+  const normalizedHost = host.trim().toLowerCase();
+  const sqsRegionalMatch = normalizedHost.match(
+    /^sqs(?:-fips)?\.([a-z0-9-]+)\.amazonaws\.com(?:\.cn)?$/
+  );
+
+  if (sqsRegionalMatch) {
+    return {
+      region: sqsRegionalMatch[1],
+      serviceName: 'sqs'
+    };
+  }
+
+  return {};
+}
+
 export function resolveTargetUrl(endPoint: string, baseUrl?: string): URL {
   if (/^https?:\/\//i.test(endPoint)) {
     return new URL(endPoint);
@@ -78,32 +106,41 @@ export function readDefaultBodyFile(
 
 export function resolveAwsConfig(
   awsSignatureConfig?: Partial<AwsSignatureConfig>,
-  fallbackAwsConfig?: Partial<AwsSignatureConfig>
+  fallbackAwsConfig?: Partial<AwsSignatureConfig>,
+  hostDerivedConfig?: Partial<AwsSignatureConfig>
 ): AwsSignatureConfig {
-  const accessKeyId =
+  const accessKeyIdRaw =
     awsSignatureConfig?.accessKeyId ??
     fallbackAwsConfig?.accessKeyId ??
     process.env.AWS_ACCESS_KEY_ID ??
     '';
-  const secretAccessKey =
+  const secretAccessKeyRaw =
     awsSignatureConfig?.secretAccessKey ??
     fallbackAwsConfig?.secretAccessKey ??
     process.env.AWS_SECRET_ACCESS_KEY ??
     '';
-  const sessionToken =
+  const sessionTokenRaw =
     awsSignatureConfig?.sessionToken ??
     fallbackAwsConfig?.sessionToken ??
     process.env.AWS_SESSION_TOKEN;
-  const region =
+  const regionRaw =
+    hostDerivedConfig?.region ??
     awsSignatureConfig?.region ??
     fallbackAwsConfig?.region ??
     process.env.AWS_REGION ??
     '';
-  const serviceName =
+  const serviceNameRaw =
+    hostDerivedConfig?.serviceName ??
     awsSignatureConfig?.serviceName ??
     fallbackAwsConfig?.serviceName ??
     process.env.AWS_SERVICE_NAME ??
     'sqs';
+
+  const accessKeyId = accessKeyIdRaw.trim();
+  const secretAccessKey = secretAccessKeyRaw.trim();
+  const sessionToken = sessionTokenRaw?.trim();
+  const region = regionRaw.trim().toLowerCase();
+  const serviceName = normalizeAwsServiceName(serviceNameRaw);
 
   if (!accessKeyId || !secretAccessKey || !region || !serviceName) {
     throw new Error(

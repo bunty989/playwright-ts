@@ -6,6 +6,7 @@ import {
   AwsSignatureConfig,
   buildPayload,
   createSignedHeaders,
+  extractAwsScopeFromHost,
   resolveAwsConfig,
   resolveTargetUrl
 } from '../../commonMethods';
@@ -45,9 +46,11 @@ export class PostAmazonSqs {
     const contentType = options?.contentType ?? 'application/x-amz-json-1.0';
     const payload = buildPayload(bodyOverride, contentType, this.apiHelper);
     const payloadBuffer = Buffer.from(payload, 'utf8');
+    const hostDerivedConfig = extractAwsScopeFromHost(targetUrl.host);
     const signatureConfig = resolveAwsConfig(
       options?.awsSignatureConfig,
-      this.awsConfig
+      this.awsConfig,
+      hostDerivedConfig
     );
     const signedHeaders = createSignedHeaders(
       targetUrl,
