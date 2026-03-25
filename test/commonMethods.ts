@@ -122,7 +122,7 @@ export function resolveAwsConfig(
 
 export function createSignedHeaders(
   targetUrl: URL,
-  payload: string,
+  payload: string | Buffer,
   contentType: string,
   config: AwsSignatureConfig,
   additionalHeaders?: Record<string, string>
@@ -203,7 +203,8 @@ export function buildCanonicalHeaders(headers: Record<string, string>): {
   return {
     canonicalHeaders: normalizedEntries
       .map(([key, value]) => `${key}:${value}`)
-      .join('\n'),
+      .join('\n')
+      .concat('\n'),
     signedHeaders: normalizedEntries.map(([key]) => key).join(';')
   };
 }
@@ -245,8 +246,8 @@ export function formatAmzDate(date: Date): string {
   return date.toISOString().replace(/[:-]|\.\d{3}/g, '');
 }
 
-export function sha256Hex(value: string): string {
-  return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
+export function sha256Hex(value: string | Buffer): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 export function getSignatureKey(

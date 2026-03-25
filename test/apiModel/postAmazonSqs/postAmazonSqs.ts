@@ -44,13 +44,14 @@ export class PostAmazonSqs {
     const targetUrl = resolveTargetUrl(endPoint, this.baseUrl);
     const contentType = options?.contentType ?? 'application/x-amz-json-1.0';
     const payload = buildPayload(bodyOverride, contentType, this.apiHelper);
+    const payloadBuffer = Buffer.from(payload, 'utf8');
     const signatureConfig = resolveAwsConfig(
       options?.awsSignatureConfig,
       this.awsConfig
     );
     const signedHeaders = createSignedHeaders(
       targetUrl,
-      payload,
+      payloadBuffer,
       contentType,
       signatureConfig,
       {
@@ -64,13 +65,14 @@ export class PostAmazonSqs {
     );
 
     const requestContext = await request.newContext({
-      extraHTTPHeaders: signedHeaders,
       ignoreHTTPSErrors: true,
       timeout: options?.timeoutMs
     });
 
     this.response = await requestContext.post(targetUrl.toString(), {
-      data: payload
+      headers: signedHeaders,
+      data: payloadBuffer,
+      maxRedirects: 0
     });
 
     return this.response;
