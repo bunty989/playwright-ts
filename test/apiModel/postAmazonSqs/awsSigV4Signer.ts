@@ -36,6 +36,13 @@ export class AwsSigV4Signer {
     return this.hmac(kService, 'aws4_request');
   }
 
+  private encodeRFC3986(str: string): string {
+    return encodeURIComponent(str)
+      .replace(/[!*'()]/g, c =>
+        '%' + c.charCodeAt(0).toString(16).toUpperCase()
+      );
+  }
+
   public signRequest(
     method: string,
     url: string,
@@ -46,7 +53,7 @@ export class AwsSigV4Signer {
 
     const amzDate = now
       .toISOString()
-      .replace(/[:-]|\.\d{3}/g, ''); // YYYYMMDDTHHmmssZ
+      .replace(/[:-]|\.\d{3}/g, '');
 
     const dateStamp = amzDate.substring(0, 8);
 
@@ -54,37 +61,45 @@ export class AwsSigV4Signer {
 
     const payloadHash = this.hash(body || '');
 
-    // ✅ REQUIRED HEADERS
-    const headers: Record<string, string> = {
+    // ✅ Normalize headers (LOWERCASE KEYS!)
+    const headers: Record<string, string> = {};
+
+    const baseHeaders = {
       host: parsedUrl.host,
+      'content-type': extraHeaders['Content-Type'] || extraHeaders['content-type'],
       'x-amz-date': amzDate,
       'x-amz-content-sha256': payloadHash,
+      ...(this.sessionToken && {
+        'x-amz-security-token': this.sessionToken
+      }),
       ...extraHeaders
     };
 
-    if (this.sessionToken) {
-      headers['x-amz-security-token'] = this.sessionToken;
-    }
+    Object.entries(baseHeaders).forEach(([k, v]) => {
+      if (v !== undefined) {
+        headers[k.toLowerCase()] = String(v).trim();
+      }
+    });
 
-    // ✅ SORT HEADERS (CRITICAL)
-    const sortedHeaderKeys = Object.keys(headers)
-      .map(h => h.toLowerCase())
-      .sort();
+    // ✅ Sort headers
+    const sortedHeaderKeys = Object.keys(headers).sort();
 
     const canonicalHeaders = sortedHeaderKeys
-      .map(key => `${key}:${headers[key].trim()}\n`)
+      .map(key => `${key}:${headers[key]}\n`)
       .join('');
 
     const signedHeaders = sortedHeaderKeys.join(';');
 
+    // ✅ Canonical URI
     const canonicalUri = parsedUrl.pathname || '/';
 
-    // ✅ SORT QUERY PARAMS
+    // ✅ Canonical Query String (sorted + encoded)
     const canonicalQuerystring = [...parsedUrl.searchParams.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .map(([k, v]) => `${this.encodeRFC3986(k)}=${this.encodeRFC3986(v)}`)
       .join('&');
 
+    // ✅ Canonical Request
     const canonicalRequest = [
       method.toUpperCase(),
       canonicalUri,
@@ -111,6 +126,21 @@ export class AwsSigV4Signer {
       .digest('hex');
 
     const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${this.accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    // 🔥 DEBUG LOGS (THIS IS GOLD)
+    console.log('\n================ AWS SIGV4 DEBUG ================');
+    console.log('\n--- REQUEST URL ---\n', url);
+    console.log('\n--- PAYLOAD ---\n', body);
+    console.log('\n--- PAYLOAD HASH ---\n', payloadHash);
+
+    console.log('\n--- CANONICAL HEADERS ---\n', canonicalHeaders);
+    console.log('\n--- SIGNED HEADERS ---\n', signedHeaders);
+
+    console.log('\n--- CANONICAL REQUEST ---\n', canonicalRequest);
+    console.log('\n--- STRING TO SIGN ---\n', stringToSign);
+
+    console.log('\n--- FINAL SIGNATURE ---\n', signature);
+    console.log('\n===============================================\n');
 
     return {
       headers: {
