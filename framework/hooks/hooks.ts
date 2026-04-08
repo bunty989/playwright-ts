@@ -48,13 +48,18 @@ function shouldAttachVideo(): boolean {
 }
 
 async function updateDotEnvKey(key: string, value: string) {
-  const text = fs.existsSync(DOTENV_PATH)
-    ? fs.readFileSync(DOTENV_PATH, 'utf8')
-    : '';
+  let text = '';
+  try {
+    text = fs.readFileSync(DOTENV_PATH, 'utf8');
+  } catch (err: any) {
+    if (err.code !== 'ENOENT') throw err;
+  }
   const lines = text.split(/\r?\n/).filter(Boolean);
   const others = lines.filter(l => !l.startsWith(`${key}=`));
   others.push(`${key}=${value}`);
-  fs.writeFileSync(DOTENV_PATH, others.join(os.EOL), 'utf8');
+  const tempPath = `${DOTENV_PATH}.tmp`;
+  fs.writeFileSync(tempPath, others.join(os.EOL), 'utf8');
+  fs.renameSync(tempPath, DOTENV_PATH);
   process.env[key] = value;
 }
 
