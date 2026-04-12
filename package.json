@@ -14,7 +14,7 @@
     "test:report": "npm test && npm run allure:generate && npm run allure:open"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^12.7.0",
+    "@cucumber/cucumber": "^12.8.0",
     "@cucumber/html-formatter": "^23.0.0",
     "@cucumber/pretty-formatter": "^3.2.0",
     "@faker-js/faker": "^10.4.0",
