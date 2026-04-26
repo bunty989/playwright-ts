@@ -12,7 +12,7 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - name: 'Auto-assign issue'
-        uses: pozil/auto-assign-issue@v2.2.0
+        uses: pozil/auto-assign-issue@v3.0.0
         with:
           assignees: ${{github.actor}}
           repo-token: ${{ secrets.MY_PERSONAL_ACCESS_TOKEN }}
