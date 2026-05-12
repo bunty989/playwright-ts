@@ -21,7 +21,7 @@
     "@playwright/test": "^1.60.0",
     "ajv": "^8.20.0",
     "allure-commandline": "^2.40.0",
-    "allure-cucumberjs": "^3.7.2",
+    "allure-cucumberjs": "^3.8.0",
     "dotenv": "^17.4.2",
     "jsonpath-plus": "^10.4.0",
     "playwright": "^1.59.1",
