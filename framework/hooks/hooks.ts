@@ -18,6 +18,7 @@ import {
   getHeadlessSetting,
   getLaunchOptions,
 } from '../support/playwrightRuntimeConfig';
+import { SelfHealingAudit } from '../playwrightHelpers/selfHealingAudit';
 
 const DOTENV_PATH = path.join(process.cwd(), '.env');
 let wroteBrowserVersion = false;
@@ -95,7 +96,8 @@ async function detectBrowserVersionFromWorld(world: any): Promise<string> {
   return 'unknown';
 }
 
-BeforeAll(function () {
+BeforeAll(async function () {
+  SelfHealingAudit.initialise(path.join(process.cwd(), 'logs'));
   Log.info('========== Test Run Started ==========');
 });
 
