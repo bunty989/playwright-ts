@@ -27,6 +27,7 @@ jobs:
       ATTACH_VIDEO_TO_REPORTS: 'true'
       RETRY: '3'
       PARALLEL: '10'
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       TZ: 'Australia/Sydney'
 
     steps:
@@ -62,6 +63,11 @@ jobs:
           echo "ATTACH_VIDEO_TO_REPORTS=${ATTACH_VIDEO_TO_REPORTS}" >> .env
           echo "RETRY=${RETRY}" >> .env
           echo "PARALLEL=${PARALLEL}" >> .env
+          echo "GENAI_ENABLED=true" >> .env
+          echo "API_KEY=${OPENROUTER_API_KEY}" >> .env
+          echo "GENAI_ENDPOINT=https://openrouter.ai/api/v1/chat/completions" >> .env
+          echo "GENAI_MODEL=openai/gpt-oss-120b" >> .env
+          echo "GENAI_TIMEOUT_SECONDS=30" >> .env
         shell: bash
 
       - name: Run tests

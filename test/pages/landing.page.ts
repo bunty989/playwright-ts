@@ -13,11 +13,16 @@ export class LandingPage {
   constructor(page: Page) {
     this.webHelper = new WebHelper(page);
 
-    this.userBtn = this.webHelper.IdentifyWebElement(LocatorType.CssSelector, '#menuUserLink');
+    this.userBtn = this.webHelper.IdentifyWebElement(
+      LocatorType.CssSelector,
+      '#menuUserLink',
+      'User menu button'
+    );
 
     this.createNewAccountBtn = this.webHelper.IdentifyWebElement(
       LocatorType.CssSelector,
-      "[class^='create-new-account']"
+      "[class^='create-new-account']",
+      'Create new account button'
     );
 
     this.products = this.webHelper.IdentifyWebElement(
