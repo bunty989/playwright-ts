@@ -51,11 +51,11 @@ export class WebHelper {
     return locator;
   }
 
-  public IdentifyWebElements(
+  public async IdentifyWebElements(
     locatorType: LocatorType,
     value: string,
     elementDescription?: string
-  ): Locator {
+  ): Promise<Locator[]> {
     const selector = this.buildSelector(locatorType, value);
     Log.info('Identifying web elements', { locatorType, selector });
     const locator = this.page.locator(selector);
@@ -64,7 +64,75 @@ export class WebHelper {
       value,
       elementDescription: elementDescription?.trim() || `${locatorType}: ${value}`,
     });
+    return this.getLocatorCollection(locator, locatorType, value, elementDescription);
+  }
+
+  public IdentifyWebElementsLocator(
+    locatorType: LocatorType,
+    value: string,
+    elementDescription?: string
+  ): Locator {
+    const selector = this.buildSelector(locatorType, value);
+    Log.info('Identifying web elements locator', { locatorType, selector });
+    const locator = this.page.locator(selector);
+    this.locatorMetadata.set(locator, {
+      locatorType,
+      value,
+      elementDescription: elementDescription?.trim() || `${locatorType}: ${value}`,
+    });
     return locator;
+  }
+
+  public async FindDynamicWebTableCellLocator(
+    webTable: Locator,
+    matchingColumnName: string,
+    matchingColumnValue: string,
+    targetColumnName: string
+  ): Promise<Locator> {
+    Log.info('Finding dynamic web table cell locator', {
+      matchingColumnName,
+      matchingColumnValue,
+      targetColumnName,
+    });
+
+    const tableLocator = this.getActiveLocator(webTable);
+    const headerCells = await this.getWebTableHeaderCells(tableLocator);
+    const headers = await this.getNormalizedCellTexts(headerCells);
+    const matchingColumnIndex = this.findColumnIndex(headers, matchingColumnName);
+    const targetColumnIndex = this.findColumnIndex(headers, targetColumnName);
+
+    const bodyRows = tableLocator.locator('tbody tr');
+    const hasBodyRows = (await bodyRows.count()) > 0;
+    const rows = hasBodyRows ? bodyRows : tableLocator.locator('tr');
+    const firstDataRowIndex = hasBodyRows ? 0 : 1;
+
+    const rowCount = await rows.count();
+    for (let rowIndex = firstDataRowIndex; rowIndex < rowCount; rowIndex++) {
+      const row = rows.nth(rowIndex);
+      const cells = row.locator('th, td');
+      const matchingCell = cells.nth(matchingColumnIndex);
+      const actualValue = this.normalizeText((await matchingCell.textContent()) ?? '');
+
+      if (actualValue === this.normalizeText(matchingColumnValue)) {
+        const targetCell = cells.nth(targetColumnIndex);
+        this.locatorMetadata.set(targetCell, {
+          locatorType: LocatorType.CssSelector,
+          value: 'dynamic web table cell',
+          elementDescription: `Cell in "${targetColumnName}" where "${matchingColumnName}" is "${matchingColumnValue}"`,
+        });
+        Log.info('Dynamic web table cell locator found', {
+          rowIndex,
+          matchingColumnName,
+          matchingColumnValue,
+          targetColumnName,
+        });
+        return targetCell;
+      }
+    }
+
+    throw new Error(
+      `No web table row found where "${matchingColumnName}" equals "${matchingColumnValue}".`
+    );
   }
 
   public async WaitForElementToBeVisible(locator: Locator): Promise<void> {
@@ -184,6 +252,62 @@ export class WebHelper {
       default:
         throw new Error(`Unsupported WebElementAction: ${action}`);
     }
+  }
+
+  private async getLocatorCollection(
+    locator: Locator,
+    locatorType: LocatorType,
+    value: string,
+    elementDescription?: string
+  ): Promise<Locator[]> {
+    const count = await locator.count();
+    const locators = Array.from({ length: count }, (_, index) => locator.nth(index));
+    locators.forEach((item, index) => {
+      this.locatorMetadata.set(item, {
+        locatorType,
+        value,
+        elementDescription:
+          elementDescription?.trim() || `${locatorType}: ${value} [${index}]`,
+      });
+    });
+    Log.info('Identified web elements count', { locatorType, value, count });
+    return locators;
+  }
+
+  private async getWebTableHeaderCells(tableLocator: Locator): Promise<Locator> {
+    const theadHeaderCells = tableLocator.locator('thead tr').first().locator('th, td');
+    if ((await theadHeaderCells.count()) > 0) {
+      return theadHeaderCells;
+    }
+
+    const firstRowHeaderCells = tableLocator.locator('tr').first().locator('th, td');
+    if ((await firstRowHeaderCells.count()) > 0) {
+      return firstRowHeaderCells;
+    }
+
+    throw new Error('No header row found in the supplied web table locator.');
+  }
+
+  private async getNormalizedCellTexts(cells: Locator): Promise<string[]> {
+    const texts = await cells.allTextContents();
+    return texts.map(text => this.normalizeText(text));
+  }
+
+  private findColumnIndex(headers: string[], columnName: string): number {
+    const normalizedColumnName = this.normalizeText(columnName);
+    const index = headers.findIndex(header => header === normalizedColumnName);
+
+    if (index === -1) {
+      throw new Error(
+        `Column "${columnName}" was not found. Available columns: ${headers.join(', ')}`
+      );
+    }
+
+    return index;
+  }
+
+  private normalizeText(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
   }
 
   private async recoverLocatorAfterFailure(locator: Locator): Promise<Locator> {

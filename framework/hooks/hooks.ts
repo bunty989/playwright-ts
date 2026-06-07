@@ -19,9 +19,11 @@ import {
   getLaunchOptions,
 } from '../support/playwrightRuntimeConfig';
 import { SelfHealingAudit } from '../playwrightHelpers/selfHealingAudit';
+import { CapturedUiNetworkResponse } from '../support/world';
 
 const DOTENV_PATH = path.join(process.cwd(), '.env');
 let wroteBrowserVersion = false;
+const DEFAULT_NETWORK_RESPONSE_MAX_CHARS = 25000;
 
 type ScreenshotMode = 'success' | 'failure' | 'none' | 'all';
 
@@ -44,8 +46,131 @@ function shouldAttachStepScreenshot(mode: ScreenshotMode): boolean {
   return mode === 'all';
 }
 
+function getNetworkResponseMaxChars(): number {
+  const parsed = Number(process.env.UI_NETWORK_RESPONSE_MAX_CHARS);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_NETWORK_RESPONSE_MAX_CHARS;
+}
+
+function isFetchOrXhr(resourceType: string): boolean {
+  return resourceType === 'fetch' || resourceType === 'xhr';
+}
+
+function getMatchingRoutePath(responseUrl: string, routePaths: string[]): string | undefined {
+  if (routePaths.length === 0) {
+    return undefined;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(responseUrl);
+  } catch {
+    return routePaths.find(routePath => responseUrl.includes(routePath));
+  }
+
+  const pathWithQuery = `${url.pathname}${url.search}`;
+  return routePaths.find(routePath => {
+    const normalizedRoutePath = routePath.trim();
+
+    if (!normalizedRoutePath) {
+      return false;
+    }
+
+    if (normalizedRoutePath.startsWith('http://') || normalizedRoutePath.startsWith('https://')) {
+      return responseUrl.includes(normalizedRoutePath);
+    }
+
+    return url.pathname === normalizedRoutePath || pathWithQuery.includes(normalizedRoutePath);
+  });
+}
+
 function shouldAttachVideo(): boolean {
   return (process.env.ATTACH_VIDEO_TO_REPORTS || 'false').toLowerCase().trim() === 'true';
+}
+
+function trimNetworkBody(body: string, maxChars: number): { body: string; truncated: boolean } {
+  if (body.length <= maxChars) {
+    return { body, truncated: false };
+  }
+
+  return {
+    body: `${body.slice(0, maxChars)}\n\n[Response body truncated at ${maxChars} characters]`,
+    truncated: true,
+  };
+}
+
+function startUiNetworkCapture(world: CustomWorld): void {
+  if (!world.page) {
+    return;
+  }
+
+  world.uiNetworkResponses = [];
+  world.uiNetworkCaptureTasks = [];
+  world.uiNetworkRoutePaths = [];
+  const maxChars = getNetworkResponseMaxChars();
+
+  world.page.on('response', response => {
+    const captureTask = (async () => {
+      try {
+        const request = response.request();
+        const resourceType = request.resourceType();
+
+        if (!isFetchOrXhr(resourceType)) {
+          return;
+        }
+        const matchedRoutePath = getMatchingRoutePath(
+          response.url(),
+          world.uiNetworkRoutePaths
+        );
+
+        if (!matchedRoutePath) {
+          return;
+        }
+
+        const headers = response.headers();
+        const contentType = headers['content-type'] || headers['Content-Type'];
+        const capture: CapturedUiNetworkResponse = {
+          matchedRoutePath,
+          url: response.url(),
+          method: request.method(),
+          resourceType,
+          status: response.status(),
+          statusText: response.statusText(),
+          contentType,
+          requestPostData: request.postData(),
+        };
+
+        try {
+          const responseBody = await response.text();
+          const trimmed = trimNetworkBody(responseBody, maxChars);
+          capture.responseBody = trimmed.body;
+          capture.responseBodyTruncated = trimmed.truncated;
+        } catch (err) {
+          capture.error = err instanceof Error ? err.message : String(err);
+        }
+
+        world.uiNetworkResponses.push(capture);
+      } catch (err) {
+        Log.warn('Failed to capture UI network response', { err: String(err) });
+      }
+    })();
+
+    world.uiNetworkCaptureTasks.push(captureTask);
+  });
+}
+
+async function attachUiNetworkResponses(world: CustomWorld): Promise<void> {
+  await Promise.allSettled(world.uiNetworkCaptureTasks);
+
+  if (world.uiNetworkResponses.length === 0) {
+    return;
+  }
+
+  await world.attach(
+    JSON.stringify(world.uiNetworkResponses, null, 2),
+    'application/json'
+  );
 }
 
 async function updateDotEnvKey(key: string, value: string) {
@@ -134,6 +259,7 @@ Before(async function (this: CustomWorld, scenario: any) {
   this.browser = this.driverManager.browser;
   this.context = this.driverManager.context;
   this.page = this.driverManager.page;
+  startUiNetworkCapture(this);
   Log.info('Browser and context set up successfully');
 
   if (tags.includes('@ui') && !wroteBrowserVersion) {
@@ -165,6 +291,12 @@ After(async function (this: CustomWorld, scenario: any) {
   if (this.isApiTest) {
     Log.info('API scenario — no browser cleanup required.');
     return;
+  }
+
+  try {
+    await attachUiNetworkResponses(this);
+  } catch {
+    // Do not fail test if network response attachment fails
   }
 
   try {
