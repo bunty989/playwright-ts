@@ -18,7 +18,7 @@
     "@cucumber/html-formatter": "^24.0.0",
     "@cucumber/pretty-formatter": "^4.0.0",
     "@faker-js/faker": "^10.5.0",
-    "@playwright/test": "^1.61.0",
+    "@playwright/test": "^1.61.1",
     "ajv": "^8.20.0",
     "allure-commandline": "^2.43.0",
     "allure-cucumberjs": "^3.10.1",
