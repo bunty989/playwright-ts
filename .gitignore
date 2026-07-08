@@ -2,3 +2,4 @@
 /node_*
 /reports/*
 /logs*
+/package-lock.json

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-require('ts-node/register');
+require('tsx/cjs');
 
 const { frameworkRuntimeSettings } = require('./playwright.config.ts');
 
@@ -11,7 +11,7 @@ if (!fs.existsSync(logsDir)) {
 }
 
 const common = {
-  requireModule: ['ts-node/register', 'dotenv/config'],
+  requireModule: ['tsx/cjs', 'dotenv/config'],
 
   require: [
     'test/step-definitions/**/*.ts',
