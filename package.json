@@ -21,7 +21,7 @@
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.5.1",
     "ajv": "^8.20.0",
-    "allure-commandline": "^2.43.0",
+    "allure-commandline": "^2.46.1",
     "allure-cucumberjs": "^3.12.1",
     "dotenv": "^17.4.2",
     "tsx": "^4.23.13",
