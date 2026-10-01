@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1",
-    "@cucumber/html-formatter": "^24.1.1",
+    "@cucumber/html-formatter": "^24.2.0",
     "@cucumber/pretty-formatter": "^4.1.0",
     "@faker-js/faker": "^10.6.0",
     "@playwright/test": "^1.63.0",
