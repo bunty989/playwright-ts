@@ -88,7 +88,7 @@ jobs:
 
       - name: Upload allure-results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: allure-results-${{ matrix.os }}-${{ matrix.node-version }}-${{ matrix.browser }}
           path: allure-results
@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload allure-report (HTML)
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: allure-report-${{ matrix.os }}-${{ matrix.node-version }}-${{ matrix.browser }}
           path: allure-report
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: logs-${{ matrix.os }}-${{ matrix.node-version }}-${{ matrix.browser }}
           path: logs
