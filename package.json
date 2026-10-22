@@ -22,7 +22,7 @@
     "@types/node": "^26.6.5",
     "ajv": "^8.20.0",
     "allure-commandline": "^2.46.1",
-    "allure-cucumberjs": "^3.13.0",
+    "allure-cucumberjs": "^3.14.0",
     "dotenv": "^18.0.8",
     "tsx": "^4.23.15",
     "jsonpath-plus": "^11.2.1",
